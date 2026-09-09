@@ -7,6 +7,96 @@ from vendor_commands import ENUMS, FIELD_ENUM, SETTINGS_FIELDS
 
 GET_SETTINGS = (0x71, 0x0C)
 
+# --- DX1 II -------------------------------------------------------------
+# The DX1 II has no 0x710c GetSettings: the read channels are (a) the 12-frame
+# output-state block at 0x810a -- volume and mute live only there -- (b)
+# readNack queries against individual dx1 registers, and (c) the 3x78-word PEQ
+# config dump behind 0x1106. Everything here prefixes the report id, because
+# this firmware drops unprefixed frames (see Device._wire, report_id_prefix).
+
+
+def _prefixed(framebytes):
+    return bytes([0x00]) + framebytes[:15]
+
+
+def _frames(h, secs):
+    """Collect 22 33 protocol frames for secs; skips the idle all-zero
+    reports and the device's own 1 Hz 0x111a heartbeat tick."""
+    import time as _t
+    out, t0 = [], _t.time()
+    while _t.time() - t0 < secs:
+        try:
+            b = h.read(64, timeout=100)
+        except Exception:
+            continue
+        if not b or not any(bytes(b)):
+            continue
+        b = bytes(b)
+        if b[0] == 0x22 and b[1] == 0x33:
+            cmdr = (b[5] << 8) | b[6]
+            if cmdr == 0x111A:
+                continue
+            out.append((cmdr, b[3], b[4], int.from_bytes(b[7:11], "big")))
+    return out
+
+
+def dx1_read_block(h, secs=1.5):
+    """readNack the 0x810a output-state block -> {frame_index: value}."""
+    h.write(_prefixed(frame(0x81, 0x0A, 0, opcode=0x10)))
+    return {b[2]: b[3] for b in _frames(h, secs) if b[0] == 0x810A}
+
+
+def dx1_query(h, reg, sub, secs=0.7):
+    """One dx1 register readNack. Returns the device's current value or None
+    if that register does not answer (several don't -- 0x7601/0x7200 among
+    them, which is exactly why volume/mute live in the block above)."""
+    h.write(_prefixed(frame(reg, sub, 0, opcode=0x10)))
+    hits = [b for b in _frames(h, secs) if b[0] == ((reg << 8) | sub) and b[2] == 1]
+    return hits[0][3] if hits else None
+
+
+def dx1_read_configs(h, secs=4.5):
+    """readNack 0x1106 -> the stored PEQ configs as 78-word lists, in slot
+    order. Frames arrive strictly sequential (slot 0's curFrame 0..77, then
+    slot 1's, ...); segmented on the curFrame reset, duplicates dropped."""
+    h.write(_prefixed(frame(0x11, 0x06, 0, opcode=0x10)))
+    hits = _frames(h, secs)
+    configs, cur = [], {}
+    for cmdr, ln, cf, val in hits:
+        if cmdr != 0x1106 or ln < 70:
+            continue
+        if cf == 0 and cur:
+            if len(cur) >= 78:
+                configs.append([cur[i] for i in range(78)])
+            cur = {}
+        if cf not in cur:
+            cur[cf] = val
+    if len(cur) >= 78:
+        configs.append([cur[i] for i in range(78)])
+    return configs
+
+
+def dx1_state(dev_key="dx1ii"):
+    """Everything the DX1 II will say about itself, decoded by readsettings."""
+    h = open_checked(dev_key)
+    try:
+        blk = dx1_read_block(h)
+        regs = {}
+        for reg, sub, name in [
+            (0x71, 0x00, "state"), (0x73, 0x00, "filter"), (0x75, 0x00, "highGain"),
+            (0x79, 0x00, "autoStandby"), (0x7A, 0x00, "brightness"), (0x7B, 0x00, "input"),
+            (0x7C, 0x00, "optMode"), (0x81, 0x02, "remoteDisable"), (0x81, 0x09, "displayMode"),
+            (0x81, 0x03, "optActive"), (0x81, 0x04, "usbActive"), (0x81, 0x05, "uacVersions"),
+            (0x81, 0x07, "webFeatureFlag"), (0x81, 0x0E, "remoteArrow"),
+            (0x81, 0x0F, "remoteMute"), (0x11, 0x07, "sampling"),
+            (0x12, 0x04, "eqEnableState"), (0x12, 0x06, "eqCurrentConfig"),
+        ]:
+            regs[name] = dx1_query(h, reg, sub)
+        configs = dx1_read_configs(h)
+        return {"block": blk, "regs": regs, "configs": configs}
+    finally:
+        h.close()
+
 
 def read_settings(dev_key="dx5ii", secs=2.0):
     """Query the device and return {index: raw_value}."""

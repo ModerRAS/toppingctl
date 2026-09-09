@@ -22,6 +22,46 @@ replaced guesses with the vendor's own values. Full spec:
 | Model | PID | Status |
 |---|---|---|
 | **Topping DX5 II** | `0x8750` | ✅ **confirmed** — driven on real hardware |
+| **Topping DX1 II** | `0x8750` | ✅ **confirmed** — driven on real hardware (2026-09-08, fw 3.07) |
+
+The DX1 II speaks a **different protocol family** ("dx1 next", reverse-engineered
+from the vendor web app's bundle the same way as the DX5 II map, then confirmed
+on hardware). It is *not* a copy of the DX5 II map on the same registers:
+
+- **Framing**: writes need the report-id-0 prefix (like the D90 III); unprefixed
+  frames are silently dropped.
+- **Volume and mute live in a 12-frame state block at `0x810a`**, not at
+  `0x7102`/`0x7103` — writing the DX5 II registers there is silently ignored.
+  Frame 5 is the knob's "all outputs" volume, frames 3/4 the hp/lo memories,
+  frame 7 the mute bitmask. Volume raw is `(dB + 99) × 10`, 0–990, 1 dB steps
+  below −10 dB and 0.5 dB above.
+- **Other settings are separate registers**: gain `0x7500`, PCM filter `0x7300`,
+  input `0x7b00`, standby `0x7100` (1=working, 2=standby), brightness `0x7a00`,
+  auto-standby `0x7900`, display mode `0x8109`.
+- **PEQ is the same register map as the DX5 II** (`0x91`–`0x9b`, preamp `0x9c`,
+  same sub-indices) and all 11 bands are real storage here — but the registers
+  address **the active slot of 3 stored configs**, selected with `0x110e`
+  (data = slot index 0..2, `0xffffffff` = EQ off). `apply`/`flat` therefore
+  replace the curve stored in the active slot, not a global PEQ. Report-only
+  registers `0x1204`/`0x1206` are read-only; writing them does nothing.
+- There is **no `0x710c` GetSettings**: reads go through per-register readNack
+  queries, the `0x810a` block, and the 3×78-word PEQ config dump behind
+  `0x1106`. `./readsettings.py --device dx1ii` prints all of it.
+
+New commands (DX1 II): `mute on|off`, `input usb|opt`, `filter f1..f8`,
+`eq on|off|1-3`, and `vol --target all|hp|lo`.
+
+⚠️ **If writes seem to do nothing, close the vendor web app first.** While
+home.toppingaudio.com is connected it re-asserts its own state over the same
+HID interface and reverts your writes within about a second — the device is
+fine, you are just fighting another controller for it. Observed repeatedly on
+hardware: mute flipped back off, balance writes undone, volume stomped.
+
+Two further hardware notes from the verification session: the device acks
+writes with an echo frame, but the echo is a receipt, not proof of application —
+read-back is the only truth. And if the screen is off the state word reads 11
+instead of 1 and the panel needs a knob press (or a `power on`) before it
+behaves again.
 
 ⚠️ **Only the DX5 II has been proven.** Other Topping models are *likely*
 compatible — the vendor drives its whole range from one web app, which is
