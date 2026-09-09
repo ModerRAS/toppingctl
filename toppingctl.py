@@ -199,13 +199,17 @@ DEVICES = {
         # These registers are written and their state arrives as an
         # unsolicited push; they are never probed with readNack.
         "protocol": "dx1",
-        # 11 band registers, every one verified wired on hardware: each band
-        # (L+R) took a distinct probe value that then appeared in the device's
-        # own 0x1106 config dump, and the byte-exact restore round-tripped
-        # (2026-09-08). Unlike the DX5 II's 0x9b, band 11 here is real storage.
-        # One honest gap: audibility was not ear-checked -- the tests ran with
-        # the output muted. The vendor's own band clamp for this model is 11.
-        "bands": 11,
+        # 11 band registers exist here exactly as on the DX5 II: every one
+        # stores values (dump-verified, 2026-09-08 -- each band L+R took a
+        # distinct probe value that appeared in the device's 0x1106 config
+        # dump). But storage is not signal, and the DX5 II precedent is
+        # explicit: its band 11 also accepted and stored writes and was
+        # proven silent only by listening. The DX1 II's band 11 has not been
+        # listening-tested, so usable bands are set to 10 -- the same number
+        # as the DX5 II and the same number the owner's own stored configs
+        # top out at. The commit path still writes and clears all 11
+        # registers, so a stale band 11 is cleared underneath a preset.
+        "bands": 10,
         # Driven on real hardware 2026-09-08, firmware 3.07, protocol v2:
         # volume moved on the FRONT PANEL (f5 write, confirmed by the user),
         # mute/gain/filter/brightness/auto-standby/display-mode/input/standby
