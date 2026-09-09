@@ -22,7 +22,7 @@ replaced guesses with the vendor's own values. Full spec:
 | Model | PID | Status |
 |---|---|---|
 | **Topping DX5 II** | `0x8750` | ✅ **confirmed** — driven on real hardware |
-| **Topping DX1 II** | `0x8750` | ✅ **confirmed** — driven on real hardware (2026-09-08, fw 3.07) |
+| **Topping DX1 II** | `0x8750` | ✅ **confirmed** — driven on real hardware |
 
 The DX1 II speaks a **different protocol family** ("dx1 next", reverse-engineered
 from the vendor web app's bundle the same way as the DX5 II map, then confirmed
@@ -52,7 +52,7 @@ on hardware). It is *not* a copy of the DX5 II map on the same registers:
   **the device treats an incoming readNack as a write of the data field**:
   probing with data=0 resets the setting while "reading" it. Those registers
   are write-only from the host; their state arrives as an unsolicited push
-  after a change. Found on hardware 2026-09-09 the expensive way: a register
+  after a change. Found on hardware the expensive way: a register
   sweep meant to *read* gain pulled the user's front-panel high-gain back down
   to low. `./readsettings.py --device dx1ii` stays inside the safe set.
   Verification channel for the write-only registers: the device pushes the
@@ -155,11 +155,11 @@ bundle — it is a Qt/C++ binary — so their protocol needs USB capture instead
 established, and PEQ commands refuse rather than falling back to the DX5 II's
 10. The DX5 II's 10 was found by writing a filter to each band and listening —
 it also caught an eleventh register that accepts writes and drives nothing.
-The DX1 II is now measured, not assumed: band 11 took every probe value into
-its config dump (storage), and a loopback rig (balanced out → audio interface
-line-in, 2026-09-09) then showed a PK 1000 Hz −12 dB notch landing at −7.7 dB
-from band 10 and **+0.0 dB from band 11** — storage, not signal. The usable
-count is 10 on both devices.
+The DX1 II's 10 was found the same way on a loopback (balanced output into an
+audio interface's line-in): a PK 1000 Hz −12 dB filter measured −7.7 dB from
+band 10 and +0.0 dB from band 11. Every register still stores values — each
+took a distinct probe value that showed up in the device's own config dump —
+but the eleventh accepts writes and drives nothing here too.
 
 **A DAC that silently accepts a wrong register write is the failure mode to
 fear**, which is why step 4 uses a control with visible feedback.
@@ -186,8 +186,8 @@ write-only settings registers (gain, filter, input, brightness, display mode)
 cannot be read from the host at all — a readNack writes them — so gain, filter,
 input switching, EQ slot and standby/wake were each panel-verified by a human
 while the tool drove them. What is *not* claimed: any register outside the map
-above. Band 11 audibility was later established by measurement (2026-09-09,
-loopback rig): inert, as on the DX5 II.
+above. Band 11's silence was measured afterwards with a loopback (the
+balanced output into an audio interface's line-in): inert, as on the DX5 II.
 
 ## Install
 

@@ -175,8 +175,8 @@ DEVICES = {
         "product_match": ("DX1II", "DX1"),
         # The DX1 II does NOT accept the report-id-less framing the DX5 II
         # tolerates: plain frames are dropped silently, exactly like the
-        # D90 III. Measured 2026-09-08 -- unprefixed GetSettings produced
-        # nothing, the same frame report-id-prefixed was answered in ~12 ms.
+        # D90 III -- unprefixed GetSettings produced nothing, the same frame
+        # report-id-prefixed was answered in ~12 ms.
         "report_id_prefix": True,
         # A separate protocol family from the DX5 II map. The vendor web app
         # drives it through "dx1 next" registers: settings live at 0x71xx/
@@ -193,25 +193,24 @@ DEVICES = {
         # 0x8300, 0x8400, 0x1204, 0x1206). For anything else -- gain, filter,
         # brightness, input, display mode among them -- the device treats the
         # incoming readNack as a WRITE of the data field: probing with
-        # data=0 resets the user's settings while "reading". Measured on
-        # hardware 2026-09-09, the expensive way: a register sweep to "read"
-        # gain pulled the user's front-panel high-gain back down to low.
+        # data=0 resets the user's settings while "reading" -- a register
+        # sweep to "read" gain pulled the user's front-panel high-gain back
+        # down to low.
         # These registers are written and their state arrives as an
         # unsolicited push; they are never probed with readNack.
         "protocol": "dx1",
         # 11 band registers exist here exactly as on the DX5 II: every one
-        # stores values (dump-verified, 2026-09-08 -- each band L+R took a
-        # distinct probe value that appeared in the device's 0x1106 config
-        # dump). But storage is not signal, and band 11 has now been measured
-        # inert (2026-09-09): a PK 1000 Hz -12 dB Q2 notch in band 10 showed
-        # -7.7 dB at 1 kHz on a loopback rig (balanced out -> audio interface
-        # line-in), while the identical filter in band 11 showed +0.0 dB and
-        # the all-off restore also +0.0 dB. Usable bands are 10, same as the
+        # stores values (each band L+R took a distinct probe value that
+        # appeared in the device's 0x1106 config dump). But storage is not
+        # signal: a PK 1000 Hz -12 dB Q2 notch in band 10 showed -7.7 dB at
+        # 1 kHz on a loopback rig (balanced out -> audio interface line-in),
+        # while the identical filter in band 11 showed +0.0 dB and the
+        # all-off restore also +0.0 dB. Usable bands are 10, same as the
         # DX5 II. The commit path still writes and clears all 11 registers,
         # so a stale band 11 is cleared underneath a preset.
         "bands": 10,
-        # Driven on real hardware 2026-09-08, firmware 3.07, protocol v2:
-        # volume moved on the FRONT PANEL (f5 write, confirmed by the user),
+        # Driven on real hardware, firmware 3.07, protocol v2: volume moved
+        # on the FRONT PANEL (f5 write, confirmed by the user),
         # mute/gain/filter/brightness/auto-standby/display-mode/input/standby
         # echo-verified, PEQ writes byte-verified through the config dump
         # round-trip, all restored from a backup afterwards. The register map
@@ -278,7 +277,7 @@ def band_count(spec):
         )
     return n
 
-# --- DX1 II protocol (measured on hardware 2026-09-08; vendor names from the
+# --- DX1 II protocol (measured on hardware; vendor names from the
 # --- home.toppingaudio.com bundle, same provenance as vendor_commands.py) ----
 #
 # The DX1 II shares the 22 33 frame shape and the 0x91-0x9c PEQ registers with
@@ -995,7 +994,7 @@ def cmd_vol_dx1(args, spec):
     is loHpVolume, the knob's "all outputs" target; frames 3/4 address the
     hp/lo memories individually. The device pushes the written frame back,
     which this tool does not yet verify -- the read side lives in
-    readsettings.py. Front-panel-confirmed on hardware 2026-09-08."""
+    readsettings.py. Front-panel-confirmed on hardware."""
     raw = dx1_db_to_raw(args.db)
     if args.db > VOL_WARN_DB and not args.force:
         sys.exit(f"{args.db:+.1f} dB is loud — re-run with --force if you mean it")
@@ -1070,7 +1069,7 @@ def cmd_eq(args):
     """EQ on/off and slot select for the DX1 II. switchMcuConfig (0x110e)
     selects which of the 3 stored PEQ slots is active, with 0xffffffff = EQ
     off. Writing 0x1204/0x1206 directly does NOT work -- they are report-only
-    (measured 2026-09-08: 0x1204 write left the state at 7)."""
+    (measured: 0x1204 write left the state at 7)."""
     assert_writable(args)
     spec = DEVICES[getattr(args, "device", None) or "dx5ii"]
     if spec.get("protocol") != "dx1":
@@ -1140,7 +1139,7 @@ def cmd_power(args):
     if spec.get("protocol") == "dx1":
         # Standby/wake is dx1State: 2 = standby, 1 = working. No checksum, no
         # commit; the device pushes its state back. Verified asleep and awake
-        # on hardware 2026-09-08.
+        # on hardware.
         dev.send(frame(*DX1_REG_STATE, 1 if on else 2), f"power {args.state}")
     else:
         dev.send(frame(REG_CTRL, SUB_POWER, int(on), b4=SUB_POWER_B4, crc=True),

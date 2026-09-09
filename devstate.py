@@ -49,8 +49,8 @@ def dx1_read_block(h, secs=1.5):
 def dx1_query(h, reg, sub, secs=0.7):
     """One dx1 register readNack. Returns the device's current value or None.
 
-    ⚠️ ONLY SAFE FOR THE VENDOR'S QUERY LIST. Measured on hardware
-    2026-09-09: for registers outside that list the device treats an
+    ⚠️ ONLY SAFE FOR THE VENDOR'S QUERY LIST. Measured on hardware:
+    for registers outside that list the device treats an
     incoming readNack as a WRITE of the data field -- a readNack with
     data=0 zeroes the register. This was not obvious: the "reads" looked
     plausible while they silently reset the user's gain/filter/input to
