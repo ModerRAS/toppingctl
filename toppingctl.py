@@ -202,13 +202,13 @@ DEVICES = {
         # 11 band registers exist here exactly as on the DX5 II: every one
         # stores values (dump-verified, 2026-09-08 -- each band L+R took a
         # distinct probe value that appeared in the device's 0x1106 config
-        # dump). But storage is not signal, and the DX5 II precedent is
-        # explicit: its band 11 also accepted and stored writes and was
-        # proven silent only by listening. The DX1 II's band 11 has not been
-        # listening-tested, so usable bands are set to 10 -- the same number
-        # as the DX5 II and the same number the owner's own stored configs
-        # top out at. The commit path still writes and clears all 11
-        # registers, so a stale band 11 is cleared underneath a preset.
+        # dump). But storage is not signal, and band 11 has now been measured
+        # inert (2026-09-09): a PK 1000 Hz -12 dB Q2 notch in band 10 showed
+        # -7.7 dB at 1 kHz on a loopback rig (balanced out -> audio interface
+        # line-in), while the identical filter in band 11 showed +0.0 dB and
+        # the all-off restore also +0.0 dB. Usable bands are 10, same as the
+        # DX5 II. The commit path still writes and clears all 11 registers,
+        # so a stale band 11 is cleared underneath a preset.
         "bands": 10,
         # Driven on real hardware 2026-09-08, firmware 3.07, protocol v2:
         # volume moved on the FRONT PANEL (f5 write, confirmed by the user),

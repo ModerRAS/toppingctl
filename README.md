@@ -155,11 +155,11 @@ bundle — it is a Qt/C++ binary — so their protocol needs USB capture instead
 established, and PEQ commands refuse rather than falling back to the DX5 II's
 10. The DX5 II's 10 was found by writing a filter to each band and listening —
 it also caught an eleventh register that accepts writes and drives nothing.
-The DX1 II's registers were found the other way round: every one of the 11
-took a distinct probe value that appeared in the device's own config dump —
-but a dump proves storage, not signal, and the DX1 II's band 11 has not been
-listening-tested, so it is treated as the same case as the DX5 II's `0x9b`
-and the usable count is set to 10 there too.
+The DX1 II is now measured, not assumed: band 11 took every probe value into
+its config dump (storage), and a loopback rig (balanced out → audio interface
+line-in, 2026-09-09) then showed a PK 1000 Hz −12 dB notch landing at −7.7 dB
+from band 10 and **+0.0 dB from band 11** — storage, not signal. The usable
+count is 10 on both devices.
 
 **A DAC that silently accepts a wrong register write is the failure mode to
 fear**, which is why step 4 uses a control with visible feedback.
@@ -185,9 +185,9 @@ original curve restored byte-for-byte from a backup afterwards. The
 write-only settings registers (gain, filter, input, brightness, display mode)
 cannot be read from the host at all — a readNack writes them — so gain, filter,
 input switching, EQ slot and standby/wake were each panel-verified by a human
-while the tool drove them. What is *not* claimed: audibility of band 11 (the
-PEQ tests ran muted — it is treated as the DX5 II's `0x9b` until a listening
-test says otherwise), and any register outside the map above.
+while the tool drove them. What is *not* claimed: any register outside the map
+above. Band 11 audibility was later established by measurement (2026-09-09,
+loopback rig): inert, as on the DX5 II.
 
 ## Install
 
