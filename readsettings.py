@@ -53,24 +53,19 @@ def dx1_show(st):
         print(f"  f2  state       {s:>4}   = outputs {outs}, "
               f"volume {'linked' if s >> 4 & 1 else 'independent'}, "
               f"eq route {('analog', 'opt', 'both')[s >> 6 & 3]}")
-    print("\nregisters")
+    print("\nregisters (read-safe set only -- see devstate.dx1_query; the")
+    print("write-only registers' state arrives as unsolicited pushes)")
     labels = {
         "state": ("state", {1: "working", 2: "standby"}),
-        "filter": ("pcmFilter", {i: f"f{i + 1}" for i in range(8)}),
-        "highGain": ("highGain", None),
         "autoStandby": ("autoStandby", {0: "on", 1: "off"}),
-        "brightness": ("brightness", None),
-        "input": ("input", {0: "usb", 1: "optical"}),
-        "optMode": ("optMode", None),
-        "remoteDisable": ("remoteDisable", None),
-        "displayMode": ("displayMode", {0: "volume", 1: "sampleRate"}),
-        "optActive": ("optActive", None),
-        "usbActive": ("usbActive", None),
-        "uacVersions": ("uacVersions", None),
-        "webFeatureFlag": ("webFeatureFlag", None),
+        "autoScreenOff": ("autoScreenOff", None),
+        "analogBalance": ("analogBalance", None),
+        "optBalance": ("optBalance", None),
         "remoteArrow": ("remoteArrow", None),
         "remoteMute": ("remoteMute", None),
-        "sampling": ("sampling", None),
+        "knobSingle": ("knobSingle", None),
+        "knobDouble": ("knobDouble", None),
+        "knobEventCaps": ("knobEventCaps", None),
         "eqEnableState": ("eqEnableState", None),
         "eqCurrentConfig": ("eqCurrentConfig", None),
     }
@@ -84,8 +79,6 @@ def dx1_show(st):
                      f" (runtime {'active' if v & 1 else 'idle'}, valid={bool(v & 4)})")
         if key == "eqCurrentConfig":
             extra = f"   = EQ{v + 1 if v is not None and v <= 2 else '?'} active"
-        if key == "sampling" and v:
-            extra = f"   = {v:,} Hz"
         print(f"  {label:<18} {v:<6}{extra}")
 
     print("\nPEQ configs (slot order)")

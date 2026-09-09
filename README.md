@@ -44,9 +44,19 @@ on hardware). It is *not* a copy of the DX5 II map on the same registers:
   (data = slot index 0..2, `0xffffffff` = EQ off). `apply`/`flat` therefore
   replace the curve stored in the active slot, not a global PEQ. Report-only
   registers `0x1204`/`0x1206` are read-only; writing them does nothing.
-- There is **no `0x710c` GetSettings**: reads go through per-register readNack
-  queries, the `0x810a` block, and the 3×78-word PEQ config dump behind
-  `0x1106`. `./readsettings.py --device dx1ii` prints all of it.
+- There is **no `0x710c` GetSettings**, and reads are *restricted*: a readNack
+  is only a read for the registers the vendor's own query builder allows
+  (`0x7100`, `0x7900`, `0x7d00`, `0x810b`, `0x810c`, `0x810a`, `0x810d`,
+  `0x810e`, `0x810f`, `0x8200`, `0x8300`, `0x8400`, `0x1204`, `0x1206`). For
+  anything else — gain, filter, brightness, input, display mode among them —
+  **the device treats an incoming readNack as a write of the data field**:
+  probing with data=0 resets the setting while "reading" it. Those registers
+  are write-only from the host; their state arrives as an unsolicited push
+  after a change. Found on hardware 2026-09-09 the expensive way: a register
+  sweep meant to *read* gain pulled the user's front-panel high-gain back down
+  to low. `./readsettings.py --device dx1ii` stays inside the safe set.
+  Verification channel for the write-only registers: the device pushes the
+  new value after accepting a write, and the front panel confirms it.
 
 New commands (DX1 II): `mute on|off`, `input usb|opt`, `filter f1..f8`,
 `eq on|off|1-3`, and `vol --target all|hp|lo`.
@@ -154,6 +164,16 @@ Q 2.0) was then displayed correctly by Topping's own web app, together with a
 volume this tool had set. An independent client wrote it; the vendor software
 read it back. That is as strong as verification gets short of a measurement rig.
 
+**The DX1 II was verified the same way, with a stronger read channel.** Volume
+changes were confirmed on the device's front panel by a human; mute, gain,
+filter, brightness, auto-standby, display mode, input switching and
+standby/wake were each written and then read back from the device; and PEQ
+writes were byte-verified through the device's own config dump — every one of
+the 11 band registers (L and R) took a distinct probe value that showed up in
+the dump, and the original curve was restored byte-for-byte from a backup
+afterwards. What is *not* claimed: audibility of band 11 (the tests ran
+muted), and any register outside the map above.
+
 ## Install
 
 ```bash
@@ -175,6 +195,23 @@ macOS may require granting your terminal **Input Monitoring**
 ./toppingctl.py show                  # last-written state
 ./toppingctl.py dump preset.json      # export state as JSON
 ```
+
+DX1 II (`--device dx1ii`):
+
+```bash
+./toppingctl.py --device dx1ii vol -30              # knob volume ("all outputs")
+./toppingctl.py --device dx1ii vol -30 --target hp  # or the hp/lo memories
+./toppingctl.py --device dx1ii mute on
+./toppingctl.py --device dx1ii gain on
+./toppingctl.py --device dx1ii input usb            # or: opt
+./toppingctl.py --device dx1ii filter f3            # PCM filter f1..f8
+./toppingctl.py --device dx1ii eq off               # EQ on | off | 1-3 (select slot)
+./toppingctl.py --device dx1ii power off            # standby (wake: power on)
+./toppingctl.py --device dx1ii apply e3.txt         # PEQ -> the ACTIVE slot of 3
+./readsettings.py --device dx1ii                    # full live state, decoded
+```
+
+Note `--dry-run` is a **global** flag: it goes *before* the subcommand.
 
 `--dry-run` prints the frames without sending them. Use it first.
 

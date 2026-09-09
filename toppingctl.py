@@ -10,6 +10,12 @@ Reverse-engineered and hardware-confirmed on a DX5 II. Other Topping models very
 likely share the register map -- the vendor drives them from one web app -- but
 only the DX5 II has been proven. See DEVICES and README "Adding a device".
 
+The Topping DX1 II is the exception that proves the rule: it shares the PID and
+the PEQ registers but speaks a different "dx1 next" protocol family for
+everything else (volume/mute live in a 12-frame 0x810a state block; the DX5 II
+volume/mute registers are silently ignored). It is hardware-confirmed too --
+see DEVICES["dx1ii"] and README "Which devices".
+
     toppingctl apply <autoeq.txt|preset.json>   write a PEQ preset
     toppingctl dump [file]                      write current known state to JSON
     toppingctl show                             print current known state
@@ -173,13 +179,25 @@ DEVICES = {
         # nothing, the same frame report-id-prefixed was answered in ~12 ms.
         "report_id_prefix": True,
         # A separate protocol family from the DX5 II map. The vendor web app
-        # (home.toppingaudio.com) drives it through "dx1 next" registers:
-        # settings live at 0x71xx/0x73xx/0x75xx/... and volume+mute live in a
-        # 12-frame output-state block at 0x810a -- NOT at 0x7102/0x7103, whose
-        # dx5ii meanings this firmware silently ignores. The PEQ band
-        # registers (0x91-0x9b + 0x9c preamp) ARE shared with the DX5 II and
-        # address the ACTIVE config slot of 3 stored slots, selected with
-        # 0x110e. See the command comments below for the full map.
+        # drives it through "dx1 next" registers: settings live at 0x71xx/
+        # 0x73xx/0x75xx/... and volume+mute live in a 12-frame output-state
+        # block at 0x810a -- NOT at 0x7102/0x7103, whose dx5ii meanings this
+        # firmware silently ignores. The PEQ band registers (0x91-0x9b + 0x9c
+        # preamp) ARE shared with the DX5 II and address the ACTIVE config
+        # slot of 3 stored slots, selected with 0x110e. See the command
+        # comments below for the full map.
+        #
+        # ⚠️ READS ARE WRITE-ONLY-ADJACENT HERE. A readNack is only a read for
+        # the registers the vendor's own query builder allows (0x7100, 0x7900,
+        # 0x7d00, 0x810b, 0x810c, 0x810a, 0x810d, 0x810e, 0x810f, 0x8200,
+        # 0x8300, 0x8400, 0x1204, 0x1206). For anything else -- gain, filter,
+        # brightness, input, display mode among them -- the device treats the
+        # incoming readNack as a WRITE of the data field: probing with
+        # data=0 resets the user's settings while "reading". Measured on
+        # hardware 2026-09-09, the expensive way: a register sweep to "read"
+        # gain pulled the user's front-panel high-gain back down to low.
+        # These registers are written and their state arrives as an
+        # unsolicited push; they are never probed with readNack.
         "protocol": "dx1",
         # 11 band registers, every one verified wired on hardware: each band
         # (L+R) took a distinct probe value that then appeared in the device's
@@ -875,10 +893,10 @@ def cmd_flat(args):
     dev.close()
     if not args.dry_run:
         st = load_state()
-        st["bands"] = [dict(DEFAULT_BAND) for _ in range(BAND_COUNT)]
+        st["bands"] = [dict(DEFAULT_BAND) for _ in range(REG_COUNT)]
         st["source"] = "flat"
         save_state(st)
-        print(f"all {BAND_COUNT} bands disabled.")
+        print(f"all {REG_COUNT} bands disabled.")
 
 
 def cmd_preamp(args):

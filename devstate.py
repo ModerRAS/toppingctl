@@ -47,9 +47,21 @@ def dx1_read_block(h, secs=1.5):
 
 
 def dx1_query(h, reg, sub, secs=0.7):
-    """One dx1 register readNack. Returns the device's current value or None
-    if that register does not answer (several don't -- 0x7601/0x7200 among
-    them, which is exactly why volume/mute live in the block above)."""
+    """One dx1 register readNack. Returns the device's current value or None.
+
+    ⚠️ ONLY SAFE FOR THE VENDOR'S QUERY LIST. Measured on hardware
+    2026-09-09: for registers outside that list the device treats an
+    incoming readNack as a WRITE of the data field -- a readNack with
+    data=0 zeroes the register. This was not obvious: the "reads" looked
+    plausible while they silently reset the user's gain/filter/input to
+    defaults, and the zero that came back was the echo of our own
+    clobbering. The safe set is exactly what the vendor bundle's
+    requestGroup builder allows: 0x7100, 0x7900, 0x7d00, 0x810b, 0x810c,
+    0x810a, 0x810d, 0x810e, 0x810f, 0x8200, 0x8300, 0x8400, 0x1204,
+    0x1206. Everything else (gain, filter, brightness, input, display
+    mode, ...) is write-only for us; its state arrives as an unsolicited
+    push after it changes.
+    """
     h.write(_prefixed(frame(reg, sub, 0, opcode=0x10)))
     hits = [b for b in _frames(h, secs) if b[0] == ((reg << 8) | sub) and b[2] == 1]
     return hits[0][3] if hits else None
@@ -77,18 +89,22 @@ def dx1_read_configs(h, secs=4.5):
 
 
 def dx1_state(dev_key="dx1ii"):
-    """Everything the DX1 II will say about itself, decoded by readsettings."""
+    """Everything the DX1 II will safely say about itself, decoded by
+    readsettings. Queries are restricted to the vendor's read-safe register
+    list (see dx1_query -- anything else turns the readNack into a write of
+    the data field and clobbers the user's settings). The write-only
+    registers (gain, filter, brightness, input, display mode, ...) are
+    deliberately absent: their state only arrives as an unsolicited push."""
     h = open_checked(dev_key)
     try:
         blk = dx1_read_block(h)
         regs = {}
         for reg, sub, name in [
-            (0x71, 0x00, "state"), (0x73, 0x00, "filter"), (0x75, 0x00, "highGain"),
-            (0x79, 0x00, "autoStandby"), (0x7A, 0x00, "brightness"), (0x7B, 0x00, "input"),
-            (0x7C, 0x00, "optMode"), (0x81, 0x02, "remoteDisable"), (0x81, 0x09, "displayMode"),
-            (0x81, 0x03, "optActive"), (0x81, 0x04, "usbActive"), (0x81, 0x05, "uacVersions"),
-            (0x81, 0x07, "webFeatureFlag"), (0x81, 0x0E, "remoteArrow"),
-            (0x81, 0x0F, "remoteMute"), (0x11, 0x07, "sampling"),
+            (0x71, 0x00, "state"), (0x79, 0x00, "autoStandby"),
+            (0x7D, 0x00, "autoScreenOff"), (0x81, 0x0B, "analogBalance"),
+            (0x81, 0x0C, "optBalance"), (0x81, 0x0E, "remoteArrow"),
+            (0x81, 0x0F, "remoteMute"), (0x82, 0x00, "knobSingle"),
+            (0x83, 0x00, "knobDouble"), (0x84, 0x00, "knobEventCaps"),
             (0x12, 0x04, "eqEnableState"), (0x12, 0x06, "eqCurrentConfig"),
         ]:
             regs[name] = dx1_query(h, reg, sub)
