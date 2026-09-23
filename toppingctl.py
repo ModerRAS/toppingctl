@@ -1082,26 +1082,22 @@ def cmd_eq(args):
     if args.state == "off":
         value, label = 0xFFFFFFFF, "eq off"
     elif args.state == "on":
-        # Re-enable the last active slot: ask the device which one it was.
-        h = open_checked(getattr(args, "device", None) or "dx5ii")
-        try:
-            h.write(frame(*DX1_REG_QUERY_CFG, 0, opcode=0x10))
-            val = None
-            t0 = time.time()
-            while time.time() - t0 < 1.0:
-                try:
-                    b = h.read(64, timeout=100)
-                except Exception:
-                    continue
-                if b and bytes(b)[0:2] == b"\x22\x33" \
-                        and (bytes(b)[5] << 8 | bytes(b)[6]) == 0x1206:
-                    val = int.from_bytes(bytes(b)[7:11], "big")
-                    break
+        # Re-enable the last active slot. 0x1206 is report-only; the live
+        # path reads it through devstate so the report-id prefix is applied.
+        # --dry-run must not open the device: the slot is filled in only when
+        # the frame is actually sent, and the printed write uses slot 1.
+        if args.dry_run:
+            value, label = 0, "eq on (dry-run assumes slot 1; live run reads 0x1206)"
+        else:
+            import devstate
+            h = open_checked(getattr(args, "device", None) or "dx5ii")
+            try:
+                val = devstate.dx1_query(h, *DX1_REG_QUERY_CFG)
+            finally:
+                h.close()
             if val is None or val > 2:
                 val = 0
             value, label = val, f"eq on (slot {val + 1})"
-        finally:
-            h.close()
     else:
         slot = int(args.state)
         if not 1 <= slot <= 3:
