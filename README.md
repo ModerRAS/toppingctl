@@ -22,11 +22,11 @@ replaced guesses with the vendor's own values. Full spec:
 | Model | PID | Status |
 |---|---|---|
 | **Topping DX5 II** | `0x8750` | ✅ **confirmed** — driven on real hardware |
-| **Topping DX1 II** | `0x8750` | ✅ **confirmed** — driven on real hardware |
+| **Topping DX1 II** | `0x8750` | community-contributed — unverified |
 
 The DX1 II speaks a **different protocol family** ("dx1 next", reverse-engineered
-from the vendor web app's bundle the same way as the DX5 II map, then confirmed
-on hardware). It is *not* a copy of the DX5 II map on the same registers:
+from the vendor web app's bundle the same way as the DX5 II map, then driven on
+one contributor's unit). It is *not* a copy of the DX5 II map on the same registers:
 
 - **Framing**: writes need the report-id-0 prefix (like the D90 III); unprefixed
   frames are silently dropped.
@@ -74,10 +74,9 @@ read-back is the only truth. And if the screen is off the state word reads 11
 instead of 1 and the panel needs a knob press (or a `power on`) before it
 behaves again.
 
-⚠️ **Only the DX5 II and the DX1 II have been proven.** Other Topping models
-are *likely* compatible — the vendor drives its whole range from one web app,
-which is suggestive but not evidence. **No other model is listed until someone
-runs one.**
+⚠️ **Only the DX5 II has been proven.** Other Topping models are *likely*
+compatible — the vendor drives its whole range from one web app, which is
+suggestive but not evidence. **No other model is listed until someone runs one.**
 
 ### Adding a device
 
@@ -101,13 +100,8 @@ establishes that. The order that matters:
 3. `--dry-run` everything first and read the frames. Note `--dry-run` is a
    **global** flag: it goes *before* the subcommand.
 4. `vol` at a **safe level**, with `--unverified`, and watch the front panel. If
-   the display moves, *the volume register* holds — no more than that. The
-   DX1 II taught this the hard way: its volume path worked perfectly while
-   every settings register turned out to obey a different protocol family.
-5. Then verify each register class against a channel that cannot lie: the
-   front panel, or a device-side dump. Only the DX5 II path is `smoke.py`
-   (it writes the DX5 II's captured PEQ baseline — never point it at another
-   model's PEQ). Only then mark the entry confirmed and set `bands`.
+   the display moves, the register map holds.
+5. Only then `smoke.py`, and only then mark it confirmed and set `bands`.
 
 **`status` is enforced, not a label.** Anything other than `confirmed` refuses
 writes unless `--unverified` is passed. Reads and `--dry-run` always work —
