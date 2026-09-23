@@ -47,8 +47,9 @@ on hardware). It is *not* a copy of the DX5 II map on the same registers:
 - There is **no `0x710c` GetSettings**, and reads are *restricted*: a readNack
   is only a read for the registers the vendor's own query builder allows
   (`0x7100`, `0x7900`, `0x7d00`, `0x810b`, `0x810c`, `0x810a`, `0x810d`,
-  `0x810e`, `0x810f`, `0x8200`, `0x8300`, `0x8400`, `0x1204`, `0x1206`). For
-  anything else — gain, filter, brightness, input, display mode among them —
+  `0x810e`, `0x810f`, `0x8200`, `0x8300`, `0x8400`, `0x1204`, `0x1206`) plus
+  the 3-slot PEQ dump `0x1106`. For anything else — gain, filter,
+  brightness, input, display mode among them —
   **the device treats an incoming readNack as a write of the data field**:
   probing with data=0 resets the setting while "reading" it. Those registers
   are write-only from the host; their state arrives as an unsolicited push

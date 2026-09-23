@@ -55,10 +55,11 @@ def dx1_query(h, reg, sub, secs=0.7):
     data=0 zeroes the register. This was not obvious: the "reads" looked
     plausible while they silently reset the user's gain/filter/input to
     defaults, and the zero that came back was the echo of our own
-    clobbering. The safe set is exactly what the vendor bundle's
-    requestGroup builder allows: 0x7100, 0x7900, 0x7d00, 0x810b, 0x810c,
+    clobbering. The safe set is what the vendor bundle's
+    requestGroup builder allows -- 0x7100, 0x7900, 0x7d00, 0x810b, 0x810c,
     0x810a, 0x810d, 0x810e, 0x810f, 0x8200, 0x8300, 0x8400, 0x1204,
-    0x1206. Everything else (gain, filter, brightness, input, display
+    0x1206 -- plus the 3-slot PEQ dump 0x1106 (dx1_read_configs).
+    Everything else (gain, filter, brightness, input, display
     mode, ...) is write-only for us; its state arrives as an unsolicited
     push after it changes.
     """
