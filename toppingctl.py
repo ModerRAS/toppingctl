@@ -824,8 +824,13 @@ def cmd_apply(args):
         state = "" if b["on"] else "  (off)"
         print(f"  {i:2d}. {b['type']}  {b['freq']:>7.0f} Hz  "
               f"{b['gain']:+5.1f} dB  Q {b['q']:.3f}{state}")
-    if len(padded) > len(bands):
-        print(f"  {len(padded) - len(bands)} unused band(s) disabled")
+    # The 11th register is cleared on the wire so a stale band cannot linger,
+    # but it is not a band the user can dump and re-apply. The cache keeps
+    # only the usable count; validate() rejects anything longer.
+    stored = padded[:band_count(spec)]
+    unused = len(stored) - len(bands)
+    if unused:
+        print(f"  {unused} unused band(s) disabled")
 
     if dx1:
         # The 0x91-0x9b registers address whichever of the 3 stored PEQ slots
@@ -869,12 +874,12 @@ def cmd_apply(args):
 
     if not args.dry_run:
         st = load_state()
-        st["bands"] = padded
+        st["bands"] = stored
         if preamp is not None:
             st["preamp_db"] = preamp
         st["source"] = os.path.abspath(args.file)
         save_state(st)
-        print(f"\napplied. {len(padded)} bands written"
+        print(f"\napplied. {len(stored)} bands written"
               + (", committed." if not dx1 else " to the active PEQ slot."))
     else:
         print("\ndry run — nothing sent.")
@@ -896,10 +901,10 @@ def cmd_flat(args):
     dev.close()
     if not args.dry_run:
         st = load_state()
-        st["bands"] = [dict(DEFAULT_BAND) for _ in range(REG_COUNT)]
+        st["bands"] = [dict(DEFAULT_BAND) for _ in range(BAND_COUNT)]
         st["source"] = "flat"
         save_state(st)
-        print(f"all {REG_COUNT} bands disabled.")
+        print(f"all {BAND_COUNT} bands disabled.")
 
 
 def cmd_preamp(args):
@@ -1172,7 +1177,11 @@ def cmd_show(args):
 
 def cmd_dump(args):
     st = load_state()
-    out = json.dumps({"bands": st["bands"], "volume_db": st.get("volume_db"),
+    # A cache written before the 11th register was kept off the preset still
+    # round-trips: validate() only accepts the usable bands.
+    spec = DEVICES[getattr(args, "device", None) or "dx5ii"]
+    bands = st["bands"][:band_count(spec)]
+    out = json.dumps({"bands": bands, "volume_db": st.get("volume_db"),
                       "gain": st.get("gain")}, indent=2)
     if args.file:
         open(args.file, "w").write(out + "\n")
