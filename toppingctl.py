@@ -296,6 +296,9 @@ DX1_BLOCK_LEN = 12
 #   device acks by pushing the changed frame back.
 DX1_F_HP_VOL, DX1_F_LO_VOL, DX1_F_LOHP_VOL, DX1_F_OPT_VOL = 3, 4, 5, 6
 DX1_F_MUTE = 7                  # bit0 = analog muted, bit1 = opt muted
+# Four stored states of that bitmask. "on"/"off" cannot name them: writing 1
+# mutes analog and clears optical.
+DX1_MUTE = {"off": 0, "analog": 1, "opt": 2, "both": 3}
 DX1_REG_STATE = (0x71, 0x00)    # 1 = working, 2 = standby (also pushed live)
 DX1_REG_FILTER = (0x73, 0x00)   # PCM filter, 0..7
 DX1_REG_HIGH_GAIN = (0x75, 0x00)  # headphone gain, 0/1
@@ -1028,8 +1031,9 @@ def cmd_mute(args):
                  "or the remote. The DX1 II mute is verified (--device dx1ii).")
     dev = Device(args.dry_run, getattr(args, "device", None),
                  allow_unverified=getattr(args, "unverified", False))
-    dev.send(dx1_block_frame(DX1_F_MUTE, 1 if args.state == "on" else 0),
-             f"dx1 mute {args.state} (block frame {DX1_F_MUTE})")
+    dev.send(dx1_block_frame(DX1_F_MUTE, DX1_MUTE[args.state]),
+             f"dx1 mute {args.state} (block frame {DX1_F_MUTE}, "
+             f"raw {DX1_MUTE[args.state]})")
     dev.close()
     if not args.dry_run:
         print(f"mute {args.state}")
@@ -1244,8 +1248,9 @@ def main():
                         "outputs target (default), or the hp/lo memories")
     a.set_defaults(func=cmd_vol)
 
-    a = sub.add_parser("mute", help="mute on/off (DX1 II; verified there)")
-    a.add_argument("state", choices=["on", "off"])
+    a = sub.add_parser("mute", help="DX1 II mute: off, analog, opt, or both")
+    a.add_argument("state", choices=["off", "analog", "opt", "both"],
+                   help="off = neither, analog = hp/lo, opt = optical, both")
     a.set_defaults(func=cmd_mute)
 
     a = sub.add_parser("input", help="input source usb/opt (DX1 II)")

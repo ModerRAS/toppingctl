@@ -59,7 +59,7 @@ one contributor's unit). It is *not* a copy of the DX5 II map on the same regist
   Verification channel for the write-only registers: the device pushes the
   new value after accepting a write, and the front panel confirms it.
 
-New commands (DX1 II): `mute on|off`, `input usb|opt`, `filter f1..f8`,
+New commands (DX1 II): `mute off|analog|opt|both`, `input usb|opt`, `filter f1..f8`,
 `eq on|off|1-3`, and `vol --target all|hp|lo`.
 
 ⚠️ **If writes seem to do nothing, close the vendor web app first.** While
@@ -216,7 +216,10 @@ DX1 II (`--device dx1ii`):
 ```bash
 ./toppingctl.py --device dx1ii vol -30              # knob volume ("all outputs")
 ./toppingctl.py --device dx1ii vol -30 --target hp  # or the hp/lo memories
-./toppingctl.py --device dx1ii mute on
+./toppingctl.py --device dx1ii mute off             # neither output
+./toppingctl.py --device dx1ii mute analog          # hp/lo only
+./toppingctl.py --device dx1ii mute opt             # optical only
+./toppingctl.py --device dx1ii mute both
 ./toppingctl.py --device dx1ii gain on
 ./toppingctl.py --device dx1ii input usb            # or: opt
 ./toppingctl.py --device dx1ii filter f3            # PCM filter f1..f8

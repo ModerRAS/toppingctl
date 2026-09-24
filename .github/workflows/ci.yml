@@ -47,7 +47,10 @@ jobs:
           ./setctl.py --list
           ./toppingctl.py --device dx1ii --dry-run vol -30
           ./toppingctl.py --device dx1ii --dry-run vol -30 --target hp
-          ./toppingctl.py --device dx1ii --dry-run mute on
+          ./toppingctl.py --device dx1ii --dry-run mute off
+          ./toppingctl.py --device dx1ii --dry-run mute analog
+          ./toppingctl.py --device dx1ii --dry-run mute opt
+          ./toppingctl.py --device dx1ii --dry-run mute both
           ./toppingctl.py --device dx1ii --dry-run gain on
           ./toppingctl.py --device dx1ii --dry-run power off
           ./toppingctl.py --device dx1ii --dry-run input opt
