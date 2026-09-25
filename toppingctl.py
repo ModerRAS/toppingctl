@@ -13,8 +13,9 @@ only the DX5 II has been proven. See DEVICES and README "Adding a device".
 The Topping DX1 II is the exception that proves the rule: it shares the PID and
 the PEQ registers but speaks a different "dx1 next" protocol family for
 everything else (volume/mute live in a 12-frame 0x810a state block; the DX5 II
-volume/mute registers are silently ignored). It is hardware-confirmed too --
-see DEVICES["dx1ii"] and README "Which devices".
+volume/mute registers are silently ignored). The entry stays unverified:
+that flag is the write gate, so a live write needs --unverified. See
+DEVICES["dx1ii"] and README "Which devices".
 
     toppingctl apply <autoeq.txt|preset.json>   write a PEQ preset
     toppingctl dump [file]                      write current known state to JSON
@@ -210,14 +211,11 @@ DEVICES = {
         # DX5 II. The commit path still writes and clears all 11 registers,
         # so a stale band 11 is cleared underneath a preset.
         "bands": 10,
-        # Driven on real hardware, firmware 3.07, protocol v2: volume moved
-        # on the FRONT PANEL (f5 write, confirmed by the user),
-        # mute/gain/filter/brightness/auto-standby/display-mode/input/standby
-        # echo-verified, PEQ writes byte-verified through the config dump
-        # round-trip, all restored from a backup afterwards. The register map
-        # above is NOT the DX5 II's -- the guard that matters for this model
-        # is the protocol routing, not the unverified flag.
-        "status": "confirmed",
+        # Driven on one unit (firmware 3.07, protocol v2), but status stays
+        # unverified. It is the write gate, not a label: "confirmed" lets
+        # setctl.py and probe.py send DX5 II registers here, and neither
+        # knows this protocol exists. Owners pass --unverified once.
+        "status": "unverified",
     },
 }
 
@@ -842,7 +840,7 @@ def cmd_apply(args):
         # preset lands IN that slot, replacing whatever curve it held.
         print("\n  DX1 II: PEQ writes go to the ACTIVE config slot (one of 3).")
         print("  The curve currently stored there is replaced. Select a")
-        print("  different slot first with:  ./toppingctl.py --device dx1ii eq <1-3>")
+        print("  different slot first with:  ./toppingctl.py --device dx1ii --unverified eq <1-3>")
 
     if skipped:
         print(f"\n  SKIPPED unsupported filter types: {', '.join(skipped)}")
@@ -1028,7 +1026,7 @@ def cmd_mute(args):
         # hardware, and a mute that silently fails is worse than no mute.
         sys.exit("mute: not implemented for the DX5 II -- register 0x7103 is "
                  "vendor-sourced but hardware-unverified; use the vendor app "
-                 "or the remote. The DX1 II mute is verified (--device dx1ii).")
+                 "or the remote. The DX1 II mute needs --device dx1ii --unverified.")
     dev = Device(args.dry_run, getattr(args, "device", None),
                  allow_unverified=getattr(args, "unverified", False))
     dev.send(dx1_block_frame(DX1_F_MUTE, DX1_MUTE[args.state]),

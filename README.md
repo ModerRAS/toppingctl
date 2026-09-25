@@ -170,8 +170,8 @@ Q 2.0) was then displayed correctly by Topping's own web app, together with a
 volume this tool had set. An independent client wrote it; the vendor software
 read it back. That is as strong as verification gets short of a measurement rig.
 
-**The DX1 II was verified with each register class matched to a channel that
-cannot lie.** Volume: front-panel-confirmed by a human, plus read-back through
+**The DX1 II entry stays unverified**, so those writes need `--unverified`. One unit was checked with each register class matched to a channel that
+cannot lie. Volume: front-panel-confirmed by a human, plus read-back through
 the `0x810a` block. Mute: block read-back and the panel's mute icon. PEQ (band
 registers, preamp, slot select, EQ on/off): byte-verified through the device's
 own config dump — every one of the 11 band registers (L and R) took a distinct
@@ -211,22 +211,23 @@ macOS may require granting your terminal **Input Monitoring**
 ./toppingctl.py dump preset.json      # export state as JSON
 ```
 
-DX1 II (`--device dx1ii`):
+DX1 II (`--device dx1ii`). The entry is unverified, so a live write needs
+`--unverified`. `--dry-run` and `readsettings.py` do not.
 
 ```bash
-./toppingctl.py --device dx1ii vol -30              # knob volume ("all outputs")
-./toppingctl.py --device dx1ii vol -30 --target hp  # or the hp/lo memories
-./toppingctl.py --device dx1ii mute off             # neither output
-./toppingctl.py --device dx1ii mute analog          # hp/lo only
-./toppingctl.py --device dx1ii mute opt             # optical only
-./toppingctl.py --device dx1ii mute both
-./toppingctl.py --device dx1ii gain on
-./toppingctl.py --device dx1ii input usb            # or: opt
-./toppingctl.py --device dx1ii filter f3            # PCM filter f1..f8
-./toppingctl.py --device dx1ii eq off               # EQ on | off | 1-3 (select slot)
-./toppingctl.py --device dx1ii power off            # standby (wake: power on)
-./toppingctl.py --device dx1ii apply e3.txt         # PEQ -> the ACTIVE slot of 3
-./readsettings.py --device dx1ii                    # full live state, decoded
+./toppingctl.py --device dx1ii --unverified vol -30              # knob volume ("all outputs")
+./toppingctl.py --device dx1ii --unverified vol -30 --target hp  # or the hp/lo memories
+./toppingctl.py --device dx1ii --unverified mute off             # neither output
+./toppingctl.py --device dx1ii --unverified mute analog          # hp/lo only
+./toppingctl.py --device dx1ii --unverified mute opt             # optical only
+./toppingctl.py --device dx1ii --unverified mute both
+./toppingctl.py --device dx1ii --unverified gain on
+./toppingctl.py --device dx1ii --unverified input usb            # or: opt
+./toppingctl.py --device dx1ii --unverified filter f3            # PCM filter f1..f8
+./toppingctl.py --device dx1ii --unverified eq off               # EQ on | off | 1-3 (select slot)
+./toppingctl.py --device dx1ii --unverified power off            # standby (wake: power on)
+./toppingctl.py --device dx1ii --unverified apply e3.txt         # PEQ -> the ACTIVE slot of 3
+./readsettings.py --device dx1ii                                 # full live state, decoded
 ```
 
 Note `--dry-run` is a **global** flag: it goes *before* the subcommand.
